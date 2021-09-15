@@ -1,8 +1,11 @@
-
 const code = document.getElementById('code');
 const buttons = document.getElementById('buttons');
-const message = document.getElementById('message');
+const message = document.getElementById('message');`
+`
 const ws = new WebSocket("ws://77.54.205.151/", ['json']);
+
+var msgInput = document.querySelector('#msgInput'); 
+var sendMsgBtn = document.querySelector('#sendMsgBtn');
 
 let myId = ''
 let messagecount = 0
@@ -38,16 +41,11 @@ ws.onmessage = (message) => {
 
 //Lest constants that are not constants
 const peerConfig = {
-    iceServers: [
-        {
-            urls: [
-                "stun:stun.l.google.com:19302",
-                "stun:stun2.l.google.com:19302",
-                "stun:stun3.l.google.com:19302",
-                "stun:stun4.l.google.com:19302",
-            ]
-        }
-    ]
+    "iceServers": [{
+        url: 'turn:numb.viagenie.ca',
+        credential: 'muazkh',
+        username: 'webrtc@live.com'
+     },] 
 }
 let local, localChannel;
 
@@ -55,11 +53,10 @@ let local, localChannel;
 function sendRequest(i) {
 
     local = new RTCPeerConnection(peerConfig);
-    local.onconnectionstatechange = (x) => { console.log('CHANGED', x) }
+    local.onconnectionstatechange = (x) => { 
+        // console.log('CHANGED', x) 
+    }
    
-    localChannel = local.createDataChannel("sendChannel");
-    localChannel.onopen = (noClue) => console.log(`LocalChannel onOpen ${noClue.toString()}`);
-    localChannel.onclose = (noClue) => console.log(`LocalChannel onClose ${noClue.toString()}`);
     local.onicecandidate = (e) => { 
         if (e.candidate) {
             sendIceCandidate(allusers[i], e.candidate)
@@ -75,7 +72,13 @@ function sendRequest(i) {
             data: null
         }
     }
-
+    local.ondatachannel = function(event) {
+        var receiveChannel = event.channel;
+        receiveChannel.onmessage = function(event) {
+           console.log("ondatachannel message:", event.data);
+        };
+     };
+    openDataChannel()
     ws.send(JSON.stringify(request))
 }
 
@@ -113,8 +116,14 @@ async function processMsg(msg) {
             }
 
             local = new RTCPeerConnection(peerConfig);
-            local.onconnectionstatechange = (x) => { console.log('CHANGED', x) }
-            local.ondatachannel = (noClue) => console.log(`RemoteChannel onDataChannel ${noClue.toString()}`);
+            local.ondatachannel = function(event) {
+                var receiveChannel = event.channel;
+                receiveChannel.onmessage = function(event) {
+                   console.log("ondatachannel message:", event.data);
+                };
+             };
+            openDataChannel()
+
             local.onicecandidate = (e) => { 
                 if (e.candidate) {
                     sendIceCandidate(msg.from, e.candidate)
@@ -172,6 +181,22 @@ async function processMsg(msg) {
 
 }
 
+function openDataChannel(){
+    localChannel = local.createDataChannel("myDataChannel");
+     
+    localChannel.onopen = function () { 
+        console.log("we in"); 
+        localChannel.send('hi')
+     };
+
+    localChannel.onerror = function (error) { 
+       console.log("Error:", error); 
+    };
+     
+    localChannel.onmessage = function (event) { 
+       console.log("Got message:", event.data); 
+    };  
+}
 
 
 function processAllUsers(users) {
@@ -216,6 +241,13 @@ function processMyId(id) {
     }
 
 }
+
+sendMsgBtn.addEventListener("click", function (event) { 
+    console.log("send message");
+    var val = msgInput.value; 
+    localChannel.send(val); 
+ })
+
 
 
 // remote.ondatachannel = (noClue) => console.log(`RemoteChannel onDataChannel ${noClue.toString()}`);

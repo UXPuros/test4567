@@ -56,7 +56,12 @@ function onLogin(success) {
    } else { 
       //creating our RTCPeerConnection object 
       var configuration = { 
-         "iceServers": [{ "url": "stun:stun.1.google.com:19302" }] 
+         // "iceServers": [{ "url": "stun:stun.1.google.com:19302" }] 
+         "iceServers": [{
+            url: 'turn:numb.viagenie.ca',
+            credential: 'muazkh',
+            username: 'webrtc@live.com'
+         },] 
       }; 
 		
       myConnection = new RTCPeerConnection(configuration)
