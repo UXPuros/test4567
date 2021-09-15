@@ -1,7 +1,7 @@
 const code = document.getElementById('code');
 const buttons = document.getElementById('buttons');
-const message = document.getElementById('message');`
-`
+const message = document.getElementById('message');
+
 const ws = new WebSocket("ws://77.54.205.151/", ['json']);
 
 var msgInput = document.querySelector('#msgInput'); 
