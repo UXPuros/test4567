@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste</title>
+    <style>
+        html {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100%;
+            background-color: #66ffff;
+        }
+
+        code {
+            display: block;
+            height: 100%;
+            font-size: 1.5rem;
+            padding: 1rem;
+        }
+
+        #buttons {
+            padding: 1rem;
+        }
+
+        button {
+            display: block;
+            max-width: 300px;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <button id="sendRequest" onclick="sendRequest()">Send</button>
+    <div>
+        <label for="message">Enter a message:
+            <input id="message" type="text" name="message" id="message" placeholder="Message text" inputmode="latin" size=60
+                maxlength=120>
+        </label>
+    </div>
+
+    <div id="buttons">
+        
+    </div>
+    <code id="code"></code>
+    <script defer="defer" src="index.js"></script>
+</body>
+
+</html>
