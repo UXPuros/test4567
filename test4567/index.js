@@ -1,11 +1,16 @@
+const MAXIMUM_MESSAGE_SIZE = 65535;
+const END_OF_FILE_MESSAGE = 'EOF';
+
 const code = document.getElementById('code');
 const buttons = document.getElementById('buttons');
 const message = document.getElementById('message');
-
 const ws = new WebSocket("ws://77.54.205.151/", ['json']);
 
 var msgInput = document.querySelector('#msgInput'); 
-var sendMsgBtn = document.querySelector('#sendMsgBtn');
+var sendMsgBtn = document.querySelector('#sendMsgBtn'); 
+
+var sendFile = document.querySelector('#sendFile')
+var fileInput = document.querySelector('#fileInput');
 
 let myId = ''
 let messagecount = 0
@@ -53,9 +58,6 @@ let local, localChannel;
 function sendRequest(i) {
 
     local = new RTCPeerConnection(peerConfig);
-    local.onconnectionstatechange = (x) => { 
-        // console.log('CHANGED', x) 
-    }
    
     local.onicecandidate = (e) => { 
         if (e.candidate) {
@@ -72,12 +74,19 @@ function sendRequest(i) {
             data: null
         }
     }
+
     local.ondatachannel = function(event) {
-        var receiveChannel = event.channel;
-        receiveChannel.onmessage = function(event) {
-           console.log("ondatachannel message:", event.data);
-        };
-     };
+                const localChannel  = event.channel
+                localChannel.binaryType = 'arraybuffer'
+
+                const receivedBuffers = []
+
+                localChannel.onmessage = async (event) =>{
+                    HandleFileData(event, receivedBuffers, localChannel.label)
+                   
+                }
+             };
+
     openDataChannel()
     ws.send(JSON.stringify(request))
 }
@@ -117,10 +126,15 @@ async function processMsg(msg) {
 
             local = new RTCPeerConnection(peerConfig);
             local.ondatachannel = function(event) {
-                var receiveChannel = event.channel;
-                receiveChannel.onmessage = function(event) {
-                   console.log("ondatachannel message:", event.data);
-                };
+                const localChannel  = event.channel
+                localChannel.binaryType = 'arraybuffer'
+
+                const receivedBuffers = []
+
+                localChannel.onmessage = async (event) =>{
+                    HandleFileData(event, receivedBuffers, localChannel.label)
+                   
+                }
              };
             openDataChannel()
 
@@ -186,7 +200,6 @@ function openDataChannel(){
      
     localChannel.onopen = function () { 
         console.log("we in"); 
-        localChannel.send('hi')
      };
 
     localChannel.onerror = function (error) { 
@@ -237,55 +250,61 @@ function processMyId(id) {
 
     if (typeof id == 'string') {
         myId = id
-        // console.log(`your id is ${id}`) 
     }
 
 }
 
-sendMsgBtn.addEventListener("click", function (event) { 
-    console.log("send message");
-    var val = msgInput.value; 
-    localChannel.send(val); 
- })
 
+sendMsgBtn.addEventListener("click", async function (event) { 
 
+    var file = document.getElementById('msgInput').files[0]
+    console.log(file.name)
+    fileChannel = local.createDataChannel(file.name);
+    fileChannel.binaryType = 'arraybuffer';
 
-// remote.ondatachannel = (noClue) => console.log(`RemoteChannel onDataChannel ${noClue.toString()}`);
+    const arrayBuffer =  await file.arrayBuffer();
 
+    for (let i = 0; i < arrayBuffer.byteLength; i += MAXIMUM_MESSAGE_SIZE) {
+        fileChannel.send(arrayBuffer.slice(i, i + MAXIMUM_MESSAGE_SIZE));
+    }
 
-// remote.onicecandidate = (e) => { if (e.candidate) { localAddICE(e.candidate) } }
+    fileChannel.send(END_OF_FILE_MESSAGE);
 
+    fileChannel.close()
 
-// async function remoteAddICE(candidate) {
-//     return await remote.addIceCandidate(candidate)
-// }
+  });
 
-// function localAddICE(candidate) {
-//     local.addIceCandidate(candidate).catch(() => { })
-// }
+  
+ 
 
-// Now create an offer to connect; this starts the process
+const downloadFile = (blob, fileName) => {
+    const a = document.createElement('a');
+    const url = window.URL.createObjectURL(blob);
+    console.log(fileName)
+    a.href = url ;
+    a.download = fileName 
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove()
+  };
 
-// async function slowDownBoy() {
-//     try {
-//         const offer = await local.createOffer()
-//         console.log(1)
-//         await local.setLocalDescription(offer)
-//         console.log(2)
-//         await remote.setRemoteDescription(local.localDescription)
-//         console.log(3)
-//         const answer = await remote.createAnswer()
-//         console.log(4)
-//         await remote.setLocalDescription(answer)
-//         console.log(5)
-//         await local.setRemoteDescription(remote.localDescription)
-//         console.log(6)
-//     } catch (e) {
+function HandleFileData(event, receivedBuffers, label){
+    const data = event.data
+    try {
+        if (data !== END_OF_FILE_MESSAGE)
+            receivedBuffers.push(data);
+        else{
+            const arrayBuffer = receivedBuffers.reduce((acc, arrayBuffer) => {
+            const tmp = new Uint8Array(acc.byteLength + arrayBuffer.byteLength);
+            tmp.set(new Uint8Array(acc), 0);
+            tmp.set(new Uint8Array(arrayBuffer), acc.byteLength);
+            return tmp;
+        }, new Uint8Array());
+        const blob = new Blob([arrayBuffer]);
+        console.log(blob)
+        downloadFile(blob, label)
+        }
+    } catch(err){
 
-//     }
-
-// }
-
-// slowDownBoy()
-// console.log('Called it!')
-
+    }
+}
